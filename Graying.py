@@ -9,6 +9,90 @@ import CustomDataStructureUtil
 __author__ = 'pc'
 
 
+def pretreate_image(im, image_name):
+    """对图像进行预处理
+
+    :param im:
+        需要预处理的图像
+    :return:
+        无
+    """
+    threshold = 180
+
+    image_binary = image_binaryzation(im, threshold)
+    image_binary_pixels = list(image_binary.getdata())
+
+    im_rgb = im.convert('RGB')
+
+    list_rgb_pixels = list(im_rgb.getdata())
+
+    image_rgb_pixels = list_rgb_pixels.copy()
+    width, height = im.size
+    remove_noise(image_rgb_pixels, image_binary_pixels, width, height)
+    # get_single_color_image(image_pixels, largest_colors[0], width, height)
+
+    list_pixels_for_statistic = list_rgb_pixels.copy()  # 用于统计的像素list，接下来要将背景色像数去掉
+    remove_background_pixels(list_pixels_for_statistic)
+
+    # pixels_statistic = {}
+    pixels_statistic_largest_4 = {}  # 图中最多的的四种颜色 / The 4 colors with the largest area
+    least_color_value = 0  # 四种颜色中，最小那种颜色的面积 / The area of the color with the minimal area
+    for color in list_pixels_for_statistic:
+        # if color not in pixels_statistic:
+        area = list_rgb_pixels.count(color)
+        # pixels_statistic.setdefault(color, area)
+
+        if len(pixels_statistic_largest_4) < 4:
+            pixels_statistic_largest_4.setdefault(color, area)
+            least_color_key, least_color_value = CustomDataStructureUtil.get_min(pixels_statistic_largest_4)
+        else:
+            if color not in pixels_statistic_largest_4:
+                if area > least_color_value:
+                    pixels_statistic_largest_4.pop(least_color_key)
+                    pixels_statistic_largest_4.setdefault(color, area)
+                    least_color_key, least_color_value = CustomDataStructureUtil.get_min(pixels_statistic_largest_4)
+                    print(CustomDataStructureUtil.get_min(pixels_statistic_largest_4)[1])
+
+    print(pixels_statistic_largest_4)
+
+    largest_colors = list(pixels_statistic_largest_4.keys())
+
+    # print(get_color_ration(pixels_statistic_largest_4))
+    # Keep pixels in a certain range.
+    # 处理图片，保留RGB值在特定范围内的像数
+
+    im_rgb.putdata(image_rgb_pixels)
+
+    # pixels = [pixels[i * width:(i + 1) * width] for i in range(height)]
+    # print(pixels[2][78])
+    # del pixels
+    # pixels = 0
+    # print(pixels)
+
+    # for i in (0, im_rgb.size[0]):
+    #     for j in (0, im_rgb.size[1]):
+    #         for k in (0, len(pixel_data(i, j))):
+    #             print(pixel_data(i, j)[k])
+
+    im_rgb.save(image_name + "_without_noise.jpg")
+
+
+def image_binaryzation(im, threshold):
+    # 灰度化
+    im_gray = im.convert("L")
+    table = []
+    for i in range(256):
+        if i < threshold:
+            table.append(0)
+        else:
+            table.append(255)
+            # table.append(1)
+    # convert to binary image by the table
+    im_binary = im_gray.point(table, '1')
+    # print(list(im_binary.getdata()))
+    return im_binary
+
+
 def remove_background_pixels(list_pixels_for_statistic):
     """移除背景像数 / Remove the pixels with background color
 
@@ -63,6 +147,113 @@ def get_color_ration(pixels_statistic):
             return ColorRatioType.__TYPE_E__
 
 
+def get_distance(point_a, point_b):
+    """获得两点间的距离 / Get distance between two point
+
+    :param point_a:
+        第一个点 / The first point
+    :param point_b:
+        第二个点 / The second point
+    :return:
+        int 距离的平方 / distance ^ 2
+    """
+
+    return pow((point_a[0] - point_b[0]) * 0.3, 2) + pow((point_a[1] - point_b[1]) * 0.59, 2) + pow(
+        (point_a[1] - point_b[1]) * 0.1, 2)
+
+
+def get_single_color_image(image_pixels, color, width, height):
+    """获得单色图片
+
+    :param image_pixels:
+        单色图片中的像数 / Pixels in the single color image
+    :param color:
+        图片的颜色
+    :return:
+        无
+    """
+
+    print("color = {color}", color)
+
+    for y in range(height):
+        for x in range(width):
+            if image_pixels[y * width + x] != color:
+                image_pixels[y * width + x] = color
+
+
+def remove_noise(image_pixels, binary_pixels, width, height):
+    """去除噪点
+
+    :param image_pixels:
+        图片像数
+    :param image_pixels:
+        二值化图片像数
+    :param width:
+        图片宽度
+    :param height:
+        图片长度
+    :return:
+    """
+
+    for y in range(height):
+        for x in range(width):
+            color = binary_pixels[y * width + x]
+
+            if color == 255:
+                continue
+
+            weight = 0
+            up = y - 1
+            down = y + 1
+            left = x - 1
+            right = x + 1
+
+            position_up_left = up * width + left
+            if 0 < position_up_left < 2800:
+                if binary_pixels[position_up_left] == 0:
+                    weight += 1
+
+            position_up = up * width + x
+            if 0 < position_up < 2800:
+                if binary_pixels[position_up_left] == 0:
+                    weight += 1
+
+            position_up_right = up * width + right
+            if 0 <position_up_right < 2800:
+                if binary_pixels[position_up_right] == 0:
+                    weight += 1
+
+            position_left = y * width + left
+            if 0 < position_left < 2800:
+                if binary_pixels[position_left] == 0:
+                    weight += 1
+
+            position_right = y * width + right
+            if 0 < position_right < 2800:
+                if binary_pixels[position_right] == 0:
+                    weight += 1
+
+            position_down_left = down * width + left
+            if 0 < position_down_left < 2800:
+                if binary_pixels[position_down_left] == 0:
+                    weight += 1
+
+            position_down = down * width + x
+            if 0 < position_down < 2800:
+                if binary_pixels[position_down] == 0:
+                    weight += 1
+
+            position_down_right = down * width + right
+            if 0 < position_down_right < 2800:
+                if binary_pixels[position_down_right] == 0:
+                    weight += 1
+
+            if weight <= 3:
+                binary_pixels[y * width + x] = 255
+
+    for i in range(width * height):
+        if binary_pixels[i] == 255:
+            image_pixels[i] = (255, 255, 255)
 
 
 def graying(image_uri):
@@ -73,66 +264,14 @@ def graying(image_uri):
     :return:
         无 / None
     """
-    # 打开图片
-    im = Image.open(image_uri)
-    # 灰度化
-    imgary = im.convert('RGB')  # L:灰度
-    image_name = image_uri[:-4]  # 去除后缀名
-    print(image_name)
-
-    list_pixels = list(imgary.getdata())
-
-    list_pixels_for_statistic = list_pixels.copy()  # 用于统计的像素list，接下来要将背景色像数去掉
-    remove_background_pixels(list_pixels_for_statistic)
-
-    print(list_pixels.count((255, 255, 255)))
-
-    # pixels_statistic = {}
-    pixels_statistic_largest_4 = {}  # 图中最多的的四种颜色 / The 4 colors with the largest area
-    least_color_value = 0  # 四种颜色中，最小那种颜色的面积 / The area of the color with the minimal area
-    for color in list_pixels_for_statistic:
-        # if color not in pixels_statistic:
-        area = list_pixels.count(color)
-        # pixels_statistic.setdefault(color, area)
-
-        if len(pixels_statistic_largest_4) < 4:
-            pixels_statistic_largest_4.setdefault(color, area)
-            least_color_key, least_color_value = CustomDataStructureUtil.get_min(pixels_statistic_largest_4)
-        else:
-            if color not in pixels_statistic_largest_4:
-                if area > least_color_value:
-                    pixels_statistic_largest_4.pop(least_color_key)
-                    pixels_statistic_largest_4.setdefault(color, area)
-                    least_color_key, least_color_value = CustomDataStructureUtil.get_min(pixels_statistic_largest_4)
-                    print(CustomDataStructureUtil.get_min(pixels_statistic_largest_4)[1])
-
-    print(pixels_statistic_largest_4)
-
-    #print(get_color_ration(pixels_statistic_largest_4))
-
-    # Keep pixels in a certain range.
-    # 处理图片，保留RGB值在特定范围内的像数
-    # width, height = im.size
-    # for i in range(0, width-1):
-    #     print(list_pixels[i])
-    #     list_pixels[i] = (0, 0, 0)
-    #
-    # imgary.putdata(list_pixels)
-
-    # pixels = [pixels[i * width:(i + 1) * width] for i in range(height)]
-    # print(pixels[2][78])
-    # del pixels
-    # pixels = 0
-    # print(pixels)
-
-    # for i in (0, imgary.size[0]):
-    #     for j in (0, imgary.size[1]):
-    #         for k in (0, len(pixel_data(i, j))):
-    #             print(pixel_data(i, j)[k])
-
-    # imgary.save(image_name + "_gray.jpg")
 
 
-image_to_graying = r"E:/captchaImage/image/1a6028e7-5f89-4b1b-acdb-22d2d75870b0.jpg"
+image_uri = r"E:/captchaImage/image/1f6cf12c-2ee0-4c6e-866d-c32ed653f0fe.jpg"
 # image_to_graying = r"E:/captchaImage/4.png"
-graying(image_to_graying)
+
+# 打开图片
+im = Image.open(image_uri)
+image_name = image_uri[:-4]  # 去除后缀名
+print(image_name)
+pretreate_image(im, image_name)
+graying(im)

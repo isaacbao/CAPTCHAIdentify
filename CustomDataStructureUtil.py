@@ -40,3 +40,18 @@ def get_max(dictionary):
             value = v
 
     return key, value
+
+
+def sort_dictionary_by_value(dictionary):
+    """对一个value值可以比较的dictionary根据value进行排序 / Sort a dictionary by value while value in the dictionary are comparable
+
+    :param dictionary:
+        要排序的dictionary / The dictionary to be sort
+    :return:
+    """
+
+    sorted_dictionary = {}
+    while len(dictionary) > 0:
+        sorted_dictionary.setdefault()
+
+    # TODO
