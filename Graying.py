@@ -2,6 +2,7 @@
 # encoding=utf-8
 
 from PIL import Image
+import os
 
 from Constant import ColorRatioType
 import CustomDataStructureUtil
@@ -29,9 +30,10 @@ def pretreate_image(im, image_name):
     image_rgb_pixels = list_rgb_pixels.copy()
     width, height = im.size
     remove_noise(image_rgb_pixels, image_binary_pixels, width, height)
-    # get_single_color_image(image_pixels, largest_colors[0], width, height)
+    im_rgb.putdata(image_rgb_pixels)
+    im_rgb.save(image_name + "_without_noise.jpg")
 
-    list_pixels_for_statistic = list_rgb_pixels.copy()  # 用于统计的像素list，接下来要将背景色像数去掉
+    list_pixels_for_statistic = image_rgb_pixels.copy()  # 用于统计的像素list，接下来要将背景色像数去掉
     remove_background_pixels(list_pixels_for_statistic)
 
     # pixels_statistic = {}
@@ -39,7 +41,7 @@ def pretreate_image(im, image_name):
     least_color_value = 0  # 四种颜色中，最小那种颜色的面积 / The area of the color with the minimal area
     for color in list_pixels_for_statistic:
         # if color not in pixels_statistic:
-        area = list_rgb_pixels.count(color)
+        area = list_pixels_for_statistic.count(color)
         # pixels_statistic.setdefault(color, area)
 
         if len(pixels_statistic_largest_4) < 4:
@@ -54,14 +56,14 @@ def pretreate_image(im, image_name):
                     print(CustomDataStructureUtil.get_min(pixels_statistic_largest_4)[1])
 
     print(pixels_statistic_largest_4)
-
     largest_colors = list(pixels_statistic_largest_4.keys())
-
+    image_pixels = image_rgb_pixels.copy()
+    for large_color in largest_colors:
+        get_single_color_image(im_rgb.copy(), image_pixels.copy(), large_color, width, height)
+    # print(image_pixels)
     # print(get_color_ration(pixels_statistic_largest_4))
     # Keep pixels in a certain range.
     # 处理图片，保留RGB值在特定范围内的像数
-
-    im_rgb.putdata(image_rgb_pixels)
 
     # pixels = [pixels[i * width:(i + 1) * width] for i in range(height)]
     # print(pixels[2][78])
@@ -74,7 +76,6 @@ def pretreate_image(im, image_name):
     #         for k in (0, len(pixel_data(i, j))):
     #             print(pixel_data(i, j)[k])
 
-    im_rgb.save(image_name + "_without_noise.jpg")
 
 
 def image_binaryzation(im, threshold):
@@ -162,7 +163,7 @@ def get_distance(point_a, point_b):
         (point_a[1] - point_b[1]) * 0.1, 2)
 
 
-def get_single_color_image(image_pixels, color, width, height):
+def get_single_color_image(image, image_pixels, color, width, height):
     """获得单色图片
 
     :param image_pixels:
@@ -173,13 +174,21 @@ def get_single_color_image(image_pixels, color, width, height):
         无
     """
 
-    print("color = {color}", color)
-
     for y in range(height):
         for x in range(width):
+            # print(image_pixels[y * width + x])
+            # print(color)
             if image_pixels[y * width + x] != color:
-                image_pixels[y * width + x] = color
 
+                image_pixels[y * width + x] = (255, 255, 255)
+
+    image.putdata(image_pixels)
+    i = 0
+    image_path = image_name + "_single_color_" + str(i) + ".jpg"
+    while os.path.exists(image_path):
+        i += 1
+        image_path = image_name + "_single_color_" + str(i) + ".jpg"
+    image.save(image_path)
 
 def remove_noise(image_pixels, binary_pixels, width, height):
     """去除噪点

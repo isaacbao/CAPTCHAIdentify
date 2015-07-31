@@ -9,8 +9,9 @@ except ImportError:
     print('模块导入错误,请使用pip安装,pytesseract依赖：')
     raise SystemExit
 
-# image = Image.open(r"E:/captchaImage/10.png")
-# imgary = image.convert('L')
-# vcode = pytesseract.image_to_string(image)
-# print(vcode)
+path = r"E:\captchaImage\code.jpg"
+image = Image.open(path)
+imgary = image.convert('L')
+vcode = pytesseract.image_to_string(image)
+print(vcode)
 
